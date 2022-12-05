@@ -41,17 +41,6 @@ for name_stock in selected_stocks_names:
     find_stock = next(stock for stock in stocks if stock.key == name_stock)
     selected_stocks.append(find_stock)
 
-Es_selected = []
-risks_selected = []
-
-for stock in selected_stocks:
-    Es_selected.append(stock.E)
-    risks_selected.append(stock.risk)
-
-df_for_graph_selected = pd.DataFrame(
-    {'σ': risks_selected,
-     'E': Es_selected
-     })
 
 sharpe_ratio = pd.DataFrame()
 for stock in selected_stocks:
@@ -70,6 +59,23 @@ for name_stock in name_stocks:
     find_stock = next(stock for stock in stocks if stock.key == name_stock)
     selected_stocks_20.append(find_stock)
 
+Es_selected = []
+risks_selected = []
+
+for stock in selected_stocks_20:
+    Es_selected.append(stock.E)
+    risks_selected.append(stock.risk)
+
+df_for_graph_selected = pd.DataFrame(
+    {'σ': risks_selected,
+     'E': Es_selected
+     })
+
+sns.set_style('dark')
+plt.grid()
+sns.scatterplot(data=df_for_graph_selected, x='σ', y='E', c='#6C8CD5', label='Stocks', edgecolors = 'white').set_title("Profitability/Risk Map")
+plt.legend(["Stocks"])
+plt.show()
 
 return_matrix, mean_vec, cov_matrix = get_return_mean_cov(selected_stocks_20) 
 print("Детерминант матрицы ковариации: " , np.linalg.det(cov_matrix))

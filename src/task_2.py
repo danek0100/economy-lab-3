@@ -16,7 +16,7 @@ def task_2(mean_vec, cov_matrix, selected_stocks, beta, df_for_graph_selected,X)
 
     X_est = optimize_portfolio(mean_vec_est, cov_matrix_est, b, bounds=((0, 1),))
     plot_shares(X_est, selected_stocks)
-    plot_map_with_one_portfolio(X_est, mean_vec, cov_matrix, df_for_graph_selected, b)
+    plot_map_with_one_portfolio(X_est, mean_vec_est, cov_matrix_est, df_for_graph_selected, b)
 
     print('Истинные веса портфеля:')
     pprint.pprint(np.around(X, 3))
@@ -25,7 +25,6 @@ def task_2(mean_vec, cov_matrix, selected_stocks, beta, df_for_graph_selected,X)
     plot_map_with_two_portfolio(df_for_graph_selected, cov_matrix, mean_vec, X, X_est, mean_vec_est, cov_matrix_est)
     plot_shares(X, selected_stocks)
     plot_shares(X_est, selected_stocks)
-
     print('L1 норма вектора X - Xest:', np.around(np.linalg.norm(X - X_est, ord=1), 3))
 
     S = 40 
@@ -47,30 +46,17 @@ def task_2(mean_vec, cov_matrix, selected_stocks, beta, df_for_graph_selected,X)
     
     l1_norms = [experiment['L1-norm'] for experiment in experiments]
     l1_norms_mean  = np.mean(l1_norms)
-    l1_norms_std  = np.std(l1_norms)
     print('Средняя L1-норма по %d экспериментам: %.3f' % (S, l1_norms_mean))
-    print('Примерный 95 прц. доверительный интервал: [%.3f, %.3f]' %
-        (l1_norms_mean - 2*l1_norms_std, l1_norms_mean + 2*l1_norms_std))
+    plot_result_experiments(df_for_graph_selected, experiments, X, cov_matrix, mean_vec, b )
 
+
+    r_matrix_gen_2 = np.random.multivariate_normal(mean_vec, cov_matrix, T)
+    cov_matrix_est_2 = np.cov(r_matrix_gen_2.T)
+    X_est_2 = optimize_portfolio(mean_vec, cov_matrix_est, b, bounds=((0, 1),))
     
-    sns.scatterplot(data=df_for_graph_selected, x='σ', y='E', c='#6C8CD5', label='Stocks')
-    for experiment in experiments:
-        plt.scatter(risk_portfolio(experiment['X_est'], experiment['cov_matrix_est']),
-                    np.dot(experiment['mean_vec_est'], experiment['X_est']), 
-                    c='red',
-                    marker='^',
-                    s=300, 
-                    edgecolors='black')
-        
-    plt.scatter(risk_portfolio(X, cov_matrix),
-                np.dot(mean_vec,X), 
-                c='yellow',
-                marker='^',
-                s=300, 
-                edgecolors='black',
-                label='Оптимальный портфель b = %.2f' % b)
-    plt.legend()
-    plt.show()
+    plot_shares(X_est_2, selected_stocks)
+    plot_map_with_one_portfolio(X_est_2, mean_vec, cov_matrix_est_2, df_for_graph_selected, b)
+    plot_map_with_two_portfolio(df_for_graph_selected, cov_matrix, mean_vec, X, X_est_2, mean_vec, cov_matrix_est_2)
 
     experiments_with_true_mean = []
     for i in tqdm_notebook(range(S)):
@@ -88,29 +74,11 @@ def task_2(mean_vec, cov_matrix, selected_stocks, beta, df_for_graph_selected,X)
         
     l1_norms = [experiment['L1-norm'] for experiment in experiments_with_true_mean]
     l1_norms_mean  = np.mean(l1_norms)
-    l1_norms_std  = np.std(l1_norms)
     print('Средняя L1-норма по %d экспериментам: %.3f' % (S, l1_norms_mean))
-    print('Примерный 95 прц. доверительный интервал: [%.3f, %.3f]' %
-        (l1_norms_mean - 2*l1_norms_std, l1_norms_mean + 2*l1_norms_std))
+    plot_result_experiments(df_for_graph_selected, experiments_with_true_mean, X, cov_matrix, mean_vec, b )
 
-    sns.scatterplot(data=df_for_graph_selected, x='σ', y='E', c='#6C8CD5', label='Stocks')
-    for experiment in experiments_with_true_mean:
-        plt.scatter(risk_portfolio(experiment['X_est'], experiment['cov_matrix_est']),
-                    np.dot(experiment['mean_vec_est'], experiment['X_est']), 
-                    c='red',
-                    marker='*',
-                    s=300, 
-                    edgecolors='black')
-    plt.scatter(risk_portfolio(X, cov_matrix),
-                np.dot(mean_vec,X), 
-                c='yellow',
-                marker='^',
-                s=300, 
-                edgecolors='black',
-                label='Оптимальный портфель b = %.2f' % b)
-    plt.legend()
-    plt.show()
-
+    plot_map_with_three_portfolio(df_for_graph_selected, cov_matrix, mean_vec, X, X_est, mean_vec_est, cov_matrix_est,  X_est_2, mean_vec, cov_matrix_est_2)
+    
     return X_est,r_matrix_gen, mean_vec_est, cov_matrix_est
 
 
