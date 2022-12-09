@@ -53,9 +53,6 @@ def get_Stocks(level_VaR, ids_path="../resource/brazil_ids.csv"):
 
     for file in files:
         ids.append(int(file[:-4]))
-    print(ids)
-    print(files)
-
     with open(ids_path, newline='') as csvfile:
         reader = csv.DictReader(csvfile)
         for row in reader:

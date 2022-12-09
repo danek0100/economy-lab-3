@@ -14,7 +14,7 @@ from scipy.stats import norm
 import pprint
 
 def get_parameter_b(beta):
-    return (np.sqrt(2 * np.pi) *(1 - beta) )**(-1) * np.exp(-(norm.ppf(beta)**2 / 2)) 
+    return (np.sqrt(2 * np.pi)*(1 - beta) )**(-1) * np.exp(-(norm.cdf(norm.ppf(beta))**2 / 2)) 
 
 def get_return_mean_cov(stocks):
     # получить по выбранным активам матрицу их доходностей,
@@ -38,29 +38,21 @@ def optimize_portfolio(mean_vec,cov_matrix, b, bounds, objective_function=object
     X = np.ones(N)
     X = X / X.sum()
     bounds = bounds * N
-
     constraints=[]
-    constraints.append({'type': 'eq', 
-                        'fun': lambda X: np.sum(X) - 1.0})
-
-    return minimize(objective_function, X,
-                    args=(mean_vec, cov_matrix, b), method='SLSQP',
-                    constraints=constraints,
-                    bounds=bounds).x
-
+    constraints.append({'type': 'eq', 'fun': lambda X: np.sum(X) - 1.0})
+    result = minimize(objective_function, X, args=(mean_vec, cov_matrix, b), method='SLSQP', constraints=constraints, bounds=bounds).x
+    return result
+    
 def cvar_objective_function(UXalpha, T, beta):
     return UXalpha[-1] + 1 / (T * (1 - beta)) * np.sum(UXalpha[:T])
     
-def cvar_optimize_portfolio(r_matrix,
-                            beta, 
-                            cvar_objective_function=cvar_objective_function,
-                            cvxopt=False):
+def cvar_optimize_portfolio(generated_data, beta, cvar_objective_function_ =cvar_objective_function):
     alpha  = 0 
-    N = r_matrix.shape[1]
+    N = generated_data.shape[1]
     X = np.ones(N)/ N 
    
-    T = r_matrix.shape[0] 
-    U = np.dot(r_matrix,  X) - alpha
+    T = generated_data.shape[0] 
+    U = np.dot(generated_data,  X) - alpha
     
     UXalpha = np.zeros(T+N+1)
     UXalpha[:T] = U
@@ -75,20 +67,17 @@ def cvar_optimize_portfolio(r_matrix,
     
     constraints = []
     constraints.append({'type': 'eq', 'fun': lambda X: sum(X[T:N+T]) -1})
-    def u_x_con(UXalpha, r_matrix, i):
-        return np.dot(r_matrix[i], UXalpha[T:N+T]) + UXalpha[-1] - UXalpha[i],
+    def u_x_con(UXalpha, generated_data, i):
+        return np.dot(generated_data[i], UXalpha[T:N+T]) + UXalpha[-1] - UXalpha[i],
     for i in range(T):
-        constraints.append({'type': 'ineq', 
-                            'fun': u_x_con,
-                            'args': (r_matrix, i)})
+        constraints.append({'type': 'ineq', 'fun': u_x_con,'args': (generated_data, i)})
 
-    
-    return minimize(cvar_objective_function, UXalpha,
+    return minimize(cvar_objective_function_, UXalpha,
                     args=(T, beta), method='SLSQP',
                     constraints=constraints,
                     bounds=bounds).x
-
-
+    
+    
 
 def plot_shares(shares, stocks):
     plt.grid()
@@ -114,12 +103,12 @@ def plot_map_with_one_portfolio(X, mean_vec, cov_matrix, all_stocks, b):
     plt.legend()
     plt.show()
 
-def plot_map_with_two_portfolio(all_stocks, cov_matrix, mean_vec, X, X_est, mean_vec_est, cov_matrix_est):
+def plot_map_with_two_portfolio(all_stocks, cov_matrix, mean_vec, X, X_est):
     plt.grid()
     plt.scatter(data=all_stocks, x='σ', y='E', c='#6C8CD5', label='Stocks')
     plt.legend(["Stocks"])
     plt.scatter(risk_portfolio(X, cov_matrix), np.dot(mean_vec,X), color = 'red', s = 200, marker='^', edgecolors='white', label='True portfolio')
-    plt.scatter(risk_portfolio(X_est, cov_matrix_est), np.dot(mean_vec_est,X_est), color ='green', s = 200, marker='^', edgecolors='white', label='Sample portfolio' )
+    plt.scatter(risk_portfolio(X_est, cov_matrix), np.dot(mean_vec,X_est), color ='green', s = 200, marker='^', edgecolors='white', label='Sample portfolio' )
     plt.xlabel('σ', size=15)
     plt.ylabel('E', size=15)
     plt.title('Profitability/Risk Map', size=16)
@@ -138,8 +127,8 @@ def plot_result_experiments(df_for_graph_selected, experiments, shares, cov_matr
             edgecolors='white',
             label='Optimal portfolio with b = %.2f' % b)
     for experiment in experiments:
-        plt.scatter(risk_portfolio(experiment['X_est'], experiment['cov_matrix_est']),
-                    np.dot(experiment['mean_vec_est'], experiment['X_est']), 
+        plt.scatter(experiment['sigma'],
+                    experiment['E'], 
                     c='yellow',
                     marker='^',
                     s=300, 
@@ -151,48 +140,21 @@ def plot_result_experiments(df_for_graph_selected, experiments, shares, cov_matr
     plt.title('Profitability/Risk Map', size=16)
     plt.show()
 
-def plot_map_with_three_portfolio(all_stocks, cov_matrix, mean_vec, X, X_est, mean_vec_est, cov_matrix_est,  X_est_2, mean_vec_2, cov_matrix_est_2):
+def plot_map_with_three_portfolio(all_stocks, cov_matrix, mean_vec, X, X_est, X_est_2):
     plt.grid()
     plt.scatter(data=all_stocks, x='σ', y='E', c='#6C8CD5', label='Stocks')
     plt.legend(["Stocks"])
     plt.scatter(risk_portfolio(X, cov_matrix), np.dot(mean_vec,X), color = 'red', s = 200, marker='^', edgecolors='white', label='True portfolio')
-    plt.scatter(risk_portfolio(X_est, cov_matrix_est), np.dot(mean_vec_est,X_est), color ='green', s = 200, marker='^', edgecolors='white', label='Sample portfolio with estimates' )
-    plt.scatter(risk_portfolio(X_est_2, cov_matrix_est_2), np.dot(mean_vec_2, X_est_2), color ='yellow', s = 200, marker='^', edgecolors='white', label='Sample portfolio with true mean vector')
+    plt.scatter(risk_portfolio(X_est, cov_matrix), np.dot(mean_vec,X_est), color ='green', s = 200, marker='^', edgecolors='white', label='Sample portfolio with estimates' )
+    plt.scatter(risk_portfolio(X_est_2, cov_matrix), np.dot(mean_vec, X_est_2), color ='yellow', s = 200, marker='^', edgecolors='white', label='Sample portfolio with true mean vector')
     plt.xlabel('σ', size=15)
     plt.ylabel('E', size=15)
     plt.title('Profitability/Risk Map', size=16)
     plt.legend()
     plt.show()
 
-def plot_finall_result(df_for_graph_selected, X, cov_matrix, mean_vec, X_est, cov_matrix_est, mean_vec_est, cvar_X_est, b ):
-    plt.scatter(data=df_for_graph_selected, x='σ', y='E', c='#6C8CD5', label='Stocks')
-    plt.scatter(risk_portfolio(X, cov_matrix),
-                np.dot(mean_vec,X), 
-                c='yellow',
-                marker='^',
-                s=300, 
-                edgecolors='black',
-                label='Оптимальный портфель b = %.2f' % b)
 
-    plt.scatter(risk_portfolio(X_est, cov_matrix_est),
-                np.dot(mean_vec_est, X_est), 
-                c='red',
-                marker='^',
-                s=300, 
-                edgecolors='black',
-                label='Оценка оптимального портфеля b = %.2f' % b)
-
-    plt.scatter(risk_portfolio(cvar_X_est, cov_matrix_est),
-                np.dot(mean_vec_est, cvar_X_est), 
-                c='green',
-                marker='^',
-                s=300, 
-                edgecolors='black',
-                label='Оценка оптимального портфеля  CVaR' % b)
-    plt.legend()
-    plt.show()
-
-def plot_samples_CVAR(all_stocks,cvar_experiments,T,N, X, cov_matrix, mean_vec, b):
+def plot_samples_CVAR(all_stocks, cvar_experiments, T, N, X, cov_matrix, mean_vec, b):
     plt.grid()
     plt.scatter(data=all_stocks, x='σ', y='E', c='#6C8CD5', label='Stocks', edgecolors = 'white')
     plt.scatter(risk_portfolio(X, cov_matrix),
@@ -202,8 +164,8 @@ def plot_samples_CVAR(all_stocks,cvar_experiments,T,N, X, cov_matrix, mean_vec, 
             s=300, 
             edgecolors='white')
     for experiment in cvar_experiments:
-        plt.scatter(risk_portfolio(experiment['cvar_X_est'][T:N+T], experiment['cov_matrix_est']),
-                    np.dot(experiment['mean_vec_est'], experiment['cvar_X_est'][T:N+T]), 
+        plt.scatter(experiment['sigma'],
+                    experiment['E'], 
                     c='yellow',
                     marker='^',
                     s=300, 
